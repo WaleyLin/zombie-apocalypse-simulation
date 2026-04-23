@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zombie Apocalypse Simulation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c0a;
+    --panel: #111411;
+    --border: #1e2a1e;
+    --green: #39ff14;
+    --green-dim: #1a7a06;
+    --red: #ff3131;
+    --amber: #ffaa00;
+    --blue: #00cfff;
+    --text: #c8e6c9;
+    --text-dim: #5a7a5a;
+    --infected: #d4af37;
+    --zombie: #ff3131;
+    --berserk: #ff6b00;
+    --human: #39ff14;
+    --cell: 18px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+
+  h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--red);
+    text-shadow: 0 0 20px rgba(255,49,49,0.4);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    margin-bottom: 24px;
+    text-transform: uppercase;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  @media (max-width: 750px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+  }
+
+  .panel-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+    margin-top: 12px;
+  }
+
+  label:first-of-type { margin-top: 0; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px rgba(57,255,20,0.5);
+    cursor: pointer;
+  }
+
+  .val {
+    display: inline-block;
+    float: right;
+    color: var(--green);
+    font-size: 0.75rem;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 16px;
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  .btn:hover { background: rgba(57,255,20,0.08); box-shadow: 0 0 12px rgba(57,255,20,0.15); }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { border-color: var(--border); color: var(--text-dim); cursor: not-allowed; box-shadow: none; background: transparent; }
+
+  .btn.danger { border-color: var(--red); color: var(--red); }
+  .btn.danger:hover { background: rgba(255,49,49,0.08); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .stat {
+    background: #0d100d;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px 10px;
+  }
+
+  .stat-label {
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .stat-value {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.blue { color: var(--blue); }
+
+  .log {
+    height: 150px;
+    overflow-y: auto;
+    background: #0d100d;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px;
+    font-size: 0.68rem;
+    line-height: 1.7;
+  }
+
+  .log p { color: var(--text-dim); }
+  .log p.event { color: var(--text); }
+  .log p.warn { color: var(--amber); }
+  .log p.danger { color: var(--red); }
+  .log p.good { color: var(--green); }
+
+  .legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+    font-size: 0.68rem;
+    margin-top: 12px;
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* MAP */
+  .map-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  #map-canvas {
+    display: block;
+    background: #0a0c0a;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    image-rendering: pixelated;
+  }
+
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  .speed-row input { flex: 1; }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.2s;
+    width: 0%;
+  }
+
+  .overlay-msg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+
+  .canvas-wrap { position: relative; }
+  .canvas-wrap .overlay-msg.show { opacity: 1; }
+
+  .tab-row {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+
+  .tab {
+    padding: 6px 12px;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s;
+  }
+
+  .tab.active { color: var(--green); border-bottom-color: var(--green); }
+</style>
+</head>
+<body>
+
+<h1>Zombie Apocalypse</h1>
+<p class="subtitle">Cellular Automaton Simulation</p>
+
+<div class="layout">
+  <!-- LEFT PANEL -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+
+    <div class="panel">
+      <div class="panel-title">Parameters</div>
+
+      <label>Grid Width <span class="val" id="vW">20</span></label>
+      <input type="range" id="rW" min="4" max="60" value="20" oninput="document.getElementById('vW').textContent=this.value">
+
+      <label>Grid Height <span class="val" id="vH">20</span></label>
+      <input type="range" id="rH" min="4" max="60" value="20" oninput="document.getElementById('vH').textContent=this.value">
+
+      <label>Bite Accuracy <span class="val" id="vB">0.60</span></label>
+      <input type="range" id="rB" min="0" max="100" value="60" oninput="document.getElementById('vB').textContent=(this.value/100).toFixed(2)">
+
+      <label>Berserker Chance <span class="val" id="vBZ">0.15</span></label>
+      <input type="range" id="rBZ" min="0" max="100" value="15" oninput="document.getElementById('vBZ').textContent=(this.value/100).toFixed(2)">
+
+      <label>Zombie Max Strength <span class="val" id="vS">10</span></label>
+      <input type="range" id="rS" min="2" max="30" value="10" oninput="document.getElementById('vS').textContent=this.value">
+
+      <label>Initial Zombies <span class="val" id="vZ">1</span></label>
+      <input type="range" id="rZ" min="1" max="10" value="1" oninput="document.getElementById('vZ').textContent=this.value">
+
+      <button class="btn" id="btnStart" onclick="startSim()">&#9654; Start Simulation</button>
+      <button class="btn danger" id="btnStop" onclick="stopSim()" disabled>&#9632; Stop</button>
+      <button class="btn" id="btnStep" onclick="stepSim()" disabled>&#9654;&#9474; Step</button>
+      <button class="btn" onclick="resetSim()">&#8635; Reset</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Statistics</div>
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-label">Day</div><div class="stat-value blue" id="stDay">0</div></div>
+        <div class="stat"><div class="stat-label">Humans</div><div class="stat-value green" id="stHumans">—</div></div>
+        <div class="stat"><div class="stat-label">Zombies</div><div class="stat-value red" id="stZombies">0</div></div>
+        <div class="stat"><div class="stat-label">Infected</div><div class="stat-value amber" id="stInfected">0</div></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progBar"></div></div>
+      <div style="font-size:0.62rem;color:var(--text-dim);margin-top:3px;" id="progLabel">Zombie spread: 0%</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Event Log</div>
+      <div class="log" id="logBox"><p>Awaiting simulation start...</p></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Legend</div>
+      <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:var(--human)"></div><span>Human</span></div>
+        <div class="legend-item"><div class="dot" style="background:var(--infected)"></div><span>Infected</span></div>
+        <div class="legend-item"><div class="dot" style="background:var(--zombie)"></div><span>Zombie</span></div>
+        <div class="legend-item"><div class="dot" style="background:var(--berserk)"></div><span>Berserker</span></div>
+        <div class="legend-item"><div class="dot" style="background:#1a3a1a"></div><span>Empty</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="map-wrapper">
+    <div class="panel" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">
+      <span style="font-size:0.68rem;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;">Simulation Speed</span>
+      <div class="speed-row" style="flex:1;margin-left:14px;">
+        <span style="white-space:nowrap;font-size:0.68rem;">Slow</span>
+        <input type="range" id="rSpeed" min="1" max="10" value="3" style="flex:1;">
+        <span style="white-space:nowrap;font-size:0.68rem;">Fast</span>
+      </div>
+    </div>
+
+    <div class="canvas-wrap panel" style="padding:8px;overflow:auto;">
+      <div class="overlay-msg" id="overlayMsg"></div>
+      <canvas id="map-canvas"></canvas>
+    </div>
+
+    <div class="panel" style="font-size:0.7rem;color:var(--text-dim);line-height:1.8;">
+      <div class="panel-title">How It Works</div>
+      <p><span style="color:var(--text)">Bitey Zombies</span> bite one random adjacent human per day. A successful bite (based on bite accuracy × zombie strength / 10) infects the human. Infected humans turn into zombies the following day.</p>
+      <br>
+      <p><span style="color:var(--berserk)">Berserkers</span> attempt to bite <em>all</em> adjacent humans in a single day. Each zombie gains +1 strength per day — at max strength, they die and return to human. Higher max strength = longer-lasting, more dangerous zombies.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const CELL = 16;
+const EMPTY = 0, HUMAN = 1, INFECTED = 2, ZOMBIE = 3, BERSERKER = 4;
+
+let grid, strength, cooldown, W, H, day, running, timer, initialized = false;
+
+const canvas = document.getElementById('map-canvas');
+const ctx = canvas.getContext('2d');
+
+function rnd(n) { return Math.floor(Math.random() * n); }
+function rndFloat() { return Math.random(); }
+
+function initGrid() {
+  W = parseInt(document.getElementById('rW').value);
+  H = parseInt(document.getElementById('rH').value);
+  const nZombies = parseInt(document.getElementById('rZ').value);
+
+  grid = Array.from({length: W}, () => new Uint8Array(H).fill(HUMAN));
+  strength = Array.from({length: W}, () => new Uint8Array(H));
+  cooldown = Array.from({length: W}, () => new Uint8Array(H));
+
+  canvas.width  = W * CELL;
+  canvas.height = H * CELL;
+
+  const placed = new Set();
+  for (let z = 0; z < nZombies; z++) {
+    let xi, yi, key;
+    do { xi = rnd(W); yi = rnd(H); key = xi+'_'+yi; } while (placed.has(key));
+    placed.add(key);
+    grid[xi][yi] = ZOMBIE;
+    strength[xi][yi] = 5;
+    log(`Zombie spawned at (${xi}, ${yi}) with strength 5`, 'danger');
+  }
+
+  day = 0;
+  updateStats();
+  render();
+  initialized = true;
+  document.getElementById('overlayMsg').classList.remove('show');
+  document.getElementById('overlayMsg').textContent = '';
+}
+
+function countTypes() {
+  let humans = 0, zombies = 0, infected = 0, berserkers = 0;
+  for (let i = 0; i < W; i++) for (let j = 0; j < H; j++) {
+    const t = grid[i][j];
+    if (t === HUMAN) humans++;
+    else if (t === INFECTED) infected++;
+    else if (t === ZOMBIE) zombies++;
+    else if (t === BERSERKER) berserkers++;
+  }
+  return { humans, zombies, infected, berserkers };
+}
+
+function updateStats() {
+  const { humans, zombies, infected, berserkers } = countTypes();
+  const total = W * H;
+  document.getElementById('stDay').textContent = day;
+  document.getElementById('stHumans').textContent = humans;
+  document.getElementById('stZombies').textContent = zombies + berserkers;
+  document.getElementById('stInfected').textContent = infected;
+  const spread = Math.round((zombies + berserkers + infected) / total * 100);
+  document.getElementById('progBar').style.width = spread + '%';
+  document.getElementById('progLabel').textContent = 'Zombie spread: ' + spread + '%';
+}
+
+function bite(zombieStr, pBite) {
+  const r = rndFloat();
+  const chance = zombieStr * pBite / 10;
+  if (r < chance) {
+    return Math.max(1, Math.floor(Math.max(r, 0.1) * 10));
+  }
+  return 0;
+}
+
+function isBerserker(pBerserk) {
+  return rndFloat() <= pBerserk;
+}
+
+function getNeighbors(i, j, onlyHumans) {
+  const dirs = [[1,0],[0,1],[-1,0],[0,-1]];
+  const result = [];
+  for (const [di, dj] of dirs) {
+    const ni = i + di, nj = j + dj;
+    if (ni < 0 || ni >= W || nj < 0 || nj >= H) continue;
+    if (!onlyHumans || grid[ni][nj] === HUMAN) result.push([ni, nj]);
+  }
+  return result;
+}
+
+function step() {
+  const pBite = parseInt(document.getElementById('rB').value) / 100;
+  const pBerserk = parseInt(document.getElementById('rBZ').value) / 100;
+  const maxStr = parseInt(document.getElementById('rS').value);
+
+  // Process newly infected -> zombie
+  for (let i = 0; i < W; i++) for (let j = 0; j < H; j++) {
+    if (grid[i][j] === INFECTED) {
+      if (cooldown[i][j] === 0) {
+        grid[i][j] = isBerserker(pBerserk) ? BERSERKER : ZOMBIE;
+      } else {
+        cooldown[i][j]--;
+      }
+    }
+  }
+
+  // Process bites
+  for (let i = 0; i < W; i++) for (let j = 0; j < H; j++) {
+    const t = grid[i][j];
+    if (t !== ZOMBIE && t !== BERSERKER) continue;
+
+    const neighbors = getNeighbors(i, j, true);
+    if (neighbors.length === 0) continue;
+
+    const targets = (t === BERSERKER) ? neighbors : [neighbors[rnd(neighbors.length)]];
+
+    for (const [vi, vj] of targets) {
+      const power = bite(strength[i][j], pBite);
+      if (power > 0) {
+        grid[vi][vj] = INFECTED;
+        strength[vi][vj] = power;
+        cooldown[vi][vj] = 1;
+      }
+    }
+  }
+
+  // Age zombies
+  for (let i = 0; i < W; i++) for (let j = 0; j < H; j++) {
+    const t = grid[i][j];
+    if (t === ZOMBIE || t === BERSERKER) {
+      strength[i][j]++;
+      if (strength[i][j] >= maxStr) {
+        grid[i][j] = HUMAN;
+        strength[i][j] = 0;
+        log(`Zombie at (${i},${j}) expired → human`, 'good');
+      }
+    }
+  }
+
+  day++;
+  updateStats();
+  render();
+
+  // Check end condition
+  const { humans, zombies, infected, berserkers } = countTypes();
+  const total = W * H;
+  if (humans === total) { endSim(1); return false; }
+  if (zombies + berserkers + infected === total) { endSim(0); return false; }
+  if (day >= 10000) { endSim(2); return false; }
+  return true;
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < W; i++) for (let j = 0; j < H; j++) {
+    const t = grid[i][j];
+    let color;
+    switch(t) {
+      case HUMAN:     color = '#0d1f0d'; break;
+      case INFECTED:  color = '#4a3a00'; break;
+      case ZOMBIE:    color = '#3a0000'; break;
+      case BERSERKER: color = '#3a1800'; break;
+    }
+    ctx.fillStyle = color;
+    ctx.fillRect(i * CELL, j * CELL, CELL, CELL);
+
+    // Draw dot
+    let dotColor;
+    switch(t) {
+      case HUMAN:     dotColor = '#39ff14'; break;
+      case INFECTED:  dotColor = '#d4af37'; break;
+      case ZOMBIE:    dotColor = '#ff3131'; break;
+      case BERSERKER: dotColor = '#ff6b00'; break;
+    }
+    const pad = 4;
+    ctx.fillStyle = dotColor;
+    ctx.beginPath();
+    ctx.arc(i * CELL + CELL / 2, j * CELL + CELL / 2, CELL / 2 - pad, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Strength indicator for zombies
+    if ((t === ZOMBIE || t === BERSERKER) && strength[i][j] > 0) {
+      const maxStr = parseInt(document.getElementById('rS').value);
+      const ratio = strength[i][j] / maxStr;
+      ctx.fillStyle = `rgba(255,255,255,${0.15 + ratio * 0.25})`;
+      ctx.fillRect(i * CELL, j * CELL + CELL - 2, Math.round(CELL * ratio), 2);
+    }
+  }
+}
+
+function log(msg, cls = '') {
+  const box = document.getElementById('logBox');
+  const p = document.createElement('p');
+  p.textContent = `[Day ${day}] ${msg}`;
+  if (cls) p.className = cls;
+  box.appendChild(p);
+  box.scrollTop = box.scrollHeight;
+  if (box.children.length > 200) box.removeChild(box.firstChild);
+}
+
+function startSim() {
+  if (!initialized) initGrid();
+  if (running) return;
+  running = true;
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+  document.getElementById('btnStep').disabled = true;
+  log('Simulation started', 'event');
+  tick();
+}
+
+function tick() {
+  if (!running) return;
+  const speed = parseInt(document.getElementById('rSpeed').value);
+  const delay = Math.round(1000 / (speed * speed * 0.5 + 1));
+  const ok = step();
+  if (ok) timer = setTimeout(tick, delay);
+}
+
+function stopSim() {
+  running = false;
+  clearTimeout(timer);
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnStep').disabled = false;
+  log('Simulation paused', 'warn');
+}
+
+function stepSim() {
+  if (!initialized) initGrid();
+  step();
+}
+
+function resetSim() {
+  stopSim();
+  initialized = false;
+  initGrid();
+  document.getElementById('btnStep').disabled = false;
+  document.getElementById('logBox').innerHTML = '<p>Reset. Ready.</p>';
+  log('Grid initialized', 'event');
+}
+
+function endSim(result) {
+  running = false;
+  clearTimeout(timer);
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnStep').disabled = true;
+
+  const overlay = document.getElementById('overlayMsg');
+  if (result === 1) {
+    overlay.textContent = 'Humans Survived!';
+    overlay.style.color = '#39ff14';
+    log('HUMANS SURVIVED THE APOCALYPSE!', 'good');
+  } else if (result === 0) {
+    overlay.textContent = 'Zombies Win!';
+    overlay.style.color = '#ff3131';
+    log('ZOMBIES HAVE TAKEN OVER!', 'danger');
+  } else {
+    overlay.textContent = '10,000 Days — Stalemate';
+    overlay.style.color = '#ffaa00';
+    log('STALEMATE after 10,000 days.', 'warn');
+  }
+  overlay.classList.add('show');
+}
+
+// Init on load
+window.addEventListener('load', () => {
+  initGrid();
+  log('Grid initialized. Press Start.', 'event');
+});
+</script>
+</body>
+</html>
